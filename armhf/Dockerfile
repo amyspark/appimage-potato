@@ -153,5 +153,3 @@ COPY --from=linuxdeployqt /tmp/linuxdeployqt/squashfs-root/usr/ /usr/local
 COPY --from=appimagetool  /tmp/appimagetool/squashfs-root/usr/ /usr/local
 
 USER appimage
-
-ENTRYPOINT [ "/usr/bin/qemu-arm-static", "/bin/bash" ]
