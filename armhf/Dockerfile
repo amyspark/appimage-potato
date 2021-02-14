@@ -35,6 +35,8 @@ RUN apt-get install -y \
     # Mesa libraries for everything to use
     libx11-dev libxkbcommon-x11-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-util0-dev libxcb-res0-dev libxcb1-dev libxcomposite-dev libxcursor-dev \
     libxdamage-dev libxext-dev libxfixes-dev libxi-dev libxrandr-dev libxrender-dev libxss-dev libxtst-dev mesa-common-dev \
+    # Krita AppImage (Python) extra dependencies
+    libffi-dev \
     # Kdenlive AppImage extra dependencies
     liblist-moreutils-perl libtool libpixman-1-dev subversion
 
@@ -48,13 +50,17 @@ RUN locale-gen en_US en_US.UTF-8 en_NZ.UTF-8
 ### Prepare cmake
 ###
 
+# pip install cmake requires a good enough Python, which is a whole keg of deps
+# RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.8 && pip install cmake
+
 FROM base as cmake
 
-# TODO test if pip install cmake works
+ARG CMAKE_VERSION=3.19.4
+
 RUN cd /tmp && \
-    wget -c https://cmake.org/files/v3.17/cmake-3.17.0.tar.gz && \
-    tar xf cmake-3.17.0.tar.gz && \
-    cd cmake-3.17.0 && \
+    wget -c https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz && \
+    tar xf cmake-${CMAKE_VERSION}.tar.gz && \
+    cd cmake-${CMAKE_VERSION} && \
     ./bootstrap --prefix=/tmp/cmake --parallel=$(nproc) && \
     make -j $(nproc) && \
     make -j $(nproc) install
@@ -122,9 +128,16 @@ RUN cd /tmp && \
 
 FROM base
 
-LABEL Description="KDE Appimage Base (armhf)"
-LABEL vendor="amyspark.me"
-LABEL me.amyspark.release-date="2020-07-13"
+ARG BUILD_REF
+ARG BUILD_DATE
+
+LABEL org.label-schema.build-date=${BUILD_DATE}
+LABEL org.label-schema.name="KDE Appimage Base (armhf)"
+LABEL org.label-schema.url="https://amyspark.me/"
+LABEL org.label-schema.vcs-ref=${BUILD_REF}
+LABEL org.label-schema.vcs-url="e.g. https://github.com/amyspark/appimage-potato"
+LABEL org.label-schema.vendor="Amyspark"
+LABEL org.label-schema.schema-version="1.0"
 
 # Install cmake
 
