@@ -1,0 +1,25 @@
+Broken:
+
+apt-get install -y \
+    libcairo-perl:armhf \
+    libglib-perl:armhf \
+    libgtk2-perl:armhf \
+    liblist-moreutils-perl:armhf \
+    libxml-parser-perl:armhf
+
+apt-get install -y \
+    build-essential cmake git-core locales \
+    automake gcc-6 g++-6 bison gettext flex libtool subversion gperf
+apt-get install -y \
+    libpq-dev:armhf libaio-dev:armhf \
+    libasound2-dev:armhf libatkmm-1.6-dev:armhf libbz2-dev:armhf \
+    libcap-dev:armhf libcups2-dev:armhf libdbus-1-dev:armhf \
+    libdrm-dev:armhf libegl1-mesa-dev:armhf libfontconfig1-dev:armhf libfreetype6-dev:armhf libgcrypt20-dev:armhf libgl1-mesa-dev:armhf \
+    libgsl0-dev:armhf libgsl0-dev:armhf gstreamer1.0-alsa:armhf libgstreamer1.0-dev:armhf libgstreamer-plugins-base1.0-dev:armhf \
+    libjpeg-dev:armhf libnss3-dev:armhf libpci-dev:armhf libpng12-dev:armhf libpulse-dev:armhf libssl-dev:armhf \
+    libgstreamer-plugins-good1.0-dev:armhf libgstreamer-plugins-bad1.0-dev:armhf gstreamer1.0-plugins-base:armhf \
+    gstreamer1.0-plugins-good:armhf gstreamer1.0-plugins-ugly:armhf libtiff5-dev libudev-dev:armhf libwebp-dev:armhf libmysqlclient-dev:armhf \
+    libx11-dev:armhf libxkbcommon-x11-dev:armhf libxcb-glx0-dev:armhf libxcb-keysyms1-dev:armhf libxcb-util0-dev:armhf libxcb-res0-dev:armhf libxcb1-dev:armhf libxcomposite-dev:armhf libxcursor-dev:armhf \
+    libxdamage-dev:armhf libxext-dev:armhf libxfixes-dev:armhf libxi-dev:armhf libxrandr-dev:armhf libxrender-dev:armhf libxss-dev:armhf libxtst-dev:armhf mesa-common-dev:armhf \
+    libffi-dev:armhf \
+    libpixman-1-dev:armhf
