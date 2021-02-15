@@ -6,7 +6,7 @@ build_date = DateTime.now.rfc3339
 
 vcs = `git rev-parse HEAD`.strip
 
-architectures = %w[armhf arm64]
+architectures = %w[armhf arm64 x86_64]
 
 architectures.each do |arch|
   Dir.chdir __dir__ do |_wd|
