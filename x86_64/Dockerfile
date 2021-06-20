@@ -16,6 +16,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y openssh-server op
 # We do this after the general system update to ensure it doesn't bring in any unnecessary updates
 RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && apt-get update
 
+# Krita's dependencies (libheif's avif plugins) need Rust 
+RUN add-apt-repository -y ppa:ubuntu-mozilla-security/rust-updates && apt-get update && apt-get install -y cargo rustc
+
 # Now install the general dependencies we need for builds
 RUN apt-get install -y \
   # General requirements for building KDE software
@@ -38,6 +41,10 @@ RUN apt-get install -y \
   libffi-dev \
   # Kdenlive AppImage extra dependencies
   liblist-moreutils-perl libtool libpixman-1-dev subversion
+# Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 16.04
+# The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
+RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
+RUN python3.9 -m pip install meson ninja
 
 # Setup a user account for everything else to be done under
 RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appimage
