@@ -258,6 +258,35 @@ RUN cd /tmp && \
     /tmp/appimageupdate*AppImage --appimage-extract
 
 ###
+### Prepare linuxdeployqt (I made a mistake, this is the one we use at KDE)
+###
+
+FROM appimagebase as linuxdeployqt
+
+ARG linuxdeployqt_commit=b4697483c98120007019c3456914cfd1dba58384
+
+COPY --from=patchelf /tmp/patchelf/ /usr/local
+COPY --from=binutils /tmp/binutils/ /usr/local
+COPY --from=appimagetool /tmp/appimagetool/squashfs-root/usr/ /usr/local
+
+RUN git clone https://github.com/probonopd/linuxdeployqt.git /tmp/src && \
+    cd /tmp/src && \
+    git checkout $linuxdeployqt_commit && \
+    git submodule update --init --recursive
+
+RUN apt-get install -y \
+    qt5-default qtbase5-dev qttools5-dev-tools
+
+COPY linuxdeployqt.sh /
+
+RUN cd /tmp && \
+    chmod +x /linuxdeployqt.sh && \
+    /linuxdeployqt.sh && \
+    mkdir /tmp/linuxdeployqt && \
+    cd /tmp/linuxdeployqt && \
+    /tmp/linuxdeployqt*AppImage --appimage-extract
+
+###
 # Merge all tools (into /usr/local, that folder is ignored by Krita scripts)
 ###
 
@@ -278,7 +307,7 @@ LABEL org.label-schema.schema-version="1.0"
 COPY --from=patchelf /tmp/patchelf /usr/local
 
 # Install linuxdeployqt
-COPY --from=linuxdeploy-plugin-qt /tmp/linuxdeploy-plugin-qt/squashfs-root/usr/ /usr/local
+COPY --from=linuxdeployqt /tmp/linuxdeployqt/squashfs-root/usr/ /usr/local
 
 # Install appimagetool
 COPY --from=appimagetool  /tmp/appimagetool/squashfs-root/usr/ /usr/local
@@ -293,9 +322,7 @@ COPY --from=appimageupdate /tmp/*.AppImage /tmp/
 COPY --from=linuxdeploy-plugin-appimage /tmp/*.AppImage /tmp/
 COPY --from=linuxdeploy /tmp/*.AppImage /tmp/
 COPY --from=linuxdeploy-plugin-qt /tmp/*.AppImage /tmp/
+COPY --from=linuxdeployqt /tmp/*.AppImage /tmp/
 RUN sha256sum /tmp/*.AppImage
-
-# TODO: replace the whole linuxdeploy tree for https://github.com/probonopd/linuxdeployqt.git
-# See https://github.com/probonopd/linuxdeployqt/blob/master/tests/tests-ci.sh
 
 USER appimage
