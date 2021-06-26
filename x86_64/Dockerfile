@@ -122,4 +122,13 @@ COPY --from=linuxdeployqt /tmp/linuxdeployqt/squashfs-root/usr/ /usr/local
 # Install appimagetool
 COPY --from=appimagetool  /tmp/appimagetool/squashfs-root/usr/ /usr/local
 
+# Amyspark: add alternatives
+RUN apt-get install -y gcc-9 g++-9 && \
+  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 10 && \
+  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 20 && \
+  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 30 && \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 10 && \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 20 && \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 30
+
 USER appimage
