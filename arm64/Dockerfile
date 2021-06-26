@@ -17,6 +17,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y openssh-server op
 # AMY: Add universe repo at this time, debootstrap does not include it
 RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && add-apt-repository universe && apt-get update
 
+# Krita's dependencies (libheif's avif plugins) need Rust 
+RUN add-apt-repository -y ppa:ubuntu-mozilla-security/rust-updates && apt-get update && apt-get install -y cargo rustc
+
 # Now install the general dependencies we need for builds
 RUN apt-get install -y \
     # General requirements for building KDE software
@@ -42,10 +45,15 @@ RUN apt-get install -y \
     libffi-dev \
     # Kdenlive AppImage extra dependencies
     liblist-moreutils-perl libtool libpixman-1-dev subversion
+# Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 16.04
+# The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
+RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
+RUN python3.9 -m pip install --install-option="-j16" meson ninja
 
 # Setup a user account for everything else to be done under
 RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appimage
-
+# Make sure SSHD will be able to startup
+RUN mkdir /var/run/sshd/
 # Get locales in order
 RUN locale-gen en_US en_US.UTF-8 en_NZ.UTF-8
 
@@ -54,9 +62,6 @@ RUN locale-gen en_US en_US.UTF-8 en_NZ.UTF-8
 ###
 
 FROM base as cmake
-
-# pip install cmake requires a good enough Python, which is a whole keg of deps
-# RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.8 && pip install cmake
 
 ARG CMAKE_VERSION=3.19.4
 
@@ -154,5 +159,14 @@ COPY --from=linuxdeployqt /tmp/linuxdeployqt/squashfs-root/usr/ /usr/local
 
 # Install appimagetool
 COPY --from=appimagetool  /tmp/appimagetool/squashfs-root/usr/ /usr/local
+
+# Amyspark: add alternatives
+RUN apt-get install -y gcc-9 g++-9 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 10 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 20 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 30 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 10 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 20 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 30
 
 USER appimage
