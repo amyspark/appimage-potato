@@ -44,11 +44,13 @@ RUN apt-get install -y \
     # Krita AppImage (Python) extra dependencies
     libffi-dev \
     # Kdenlive AppImage extra dependencies
-    liblist-moreutils-perl libtool libpixman-1-dev subversion
+    liblist-moreutils-perl libtool libpixman-1-dev subversion \
+    # Support OpenGL ES
+    libgles2-mesa-dev
 # Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 16.04
 # The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
 RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
-RUN python3.9 -m pip install --install-option="-j16" meson ninja
+RUN python3.9 -m pip install --install-option="-j$(nproc)" meson ninja
 
 # Setup a user account for everything else to be done under
 RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appimage
