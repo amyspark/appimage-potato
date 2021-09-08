@@ -50,7 +50,7 @@ RUN apt-get install -y \
 # Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 16.04
 # The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
 RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
-RUN python3.9 -m pip install --install-option="-j$(nproc)" meson ninja
+RUN python3.9 -m pip install cmake meson ninja
 
 # Setup a user account for everything else to be done under
 RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appimage
@@ -58,22 +58,6 @@ RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appim
 RUN mkdir /var/run/sshd/
 # Get locales in order
 RUN locale-gen en_US en_US.UTF-8 en_NZ.UTF-8
-
-###
-### Prepare cmake
-###
-
-FROM base as cmake
-
-ARG CMAKE_VERSION=3.19.4
-
-RUN cd /tmp && \
-    wget -c https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz && \
-    tar xf cmake-${CMAKE_VERSION}.tar.gz && \
-    cd cmake-${CMAKE_VERSION} && \
-    ./bootstrap --prefix=/tmp/cmake --parallel=$(nproc) && \
-    make -j $(nproc) && \
-    make -j $(nproc) install
 
 ###
 ### Prepare appimagetool
@@ -148,10 +132,6 @@ LABEL org.label-schema.vcs-ref=${BUILD_REF}
 LABEL org.label-schema.vcs-url="e.g. https://github.com/amyspark/appimage-potato"
 LABEL org.label-schema.vendor="Amyspark"
 LABEL org.label-schema.schema-version="1.0"
-
-# Install cmake
-
-COPY --from=cmake /tmp/cmake /usr/local
 
 # Install patchelf
 COPY --from=patchelf /tmp/patchelf /usr/local

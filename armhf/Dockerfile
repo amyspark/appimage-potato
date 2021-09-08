@@ -17,6 +17,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y openssh-server op
 # AMY: Add universe repo at this time, debootstrap does not include it
 RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && add-apt-repository universe && apt-get update
 
+# Krita's dependencies (libheif's avif plugins) need Rust 
+RUN add-apt-repository -y ppa:ubuntu-mozilla-security/rust-updates && apt-get update && apt-get install -y cargo rustc
+
 # Now install the general dependencies we need for builds
 RUN apt-get install -y \
     # General requirements for building KDE software
@@ -44,7 +47,7 @@ RUN apt-get install -y \
 # Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 16.04
 # The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
 RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
-RUN python3.9 -m pip install --install-option="-j$(nproc)" meson ninja
+RUN python3.9 -m pip install meson
 
 # Setup a user account for everything else to be done under
 RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appimage
@@ -68,6 +71,22 @@ RUN cd /tmp && \
     ./bootstrap --prefix=/tmp/cmake --parallel=$(nproc) && \
     make -j $(nproc) && \
     make -j $(nproc) install
+
+###
+### Prepare ninja
+###
+
+FROM base as ninja
+
+ARG NINJA_VERSION=1.10.2
+
+RUN cd /tmp && \
+    wget -c https://github.com/ninja-build/ninja/archive/refs/tags/v${NINJA_VERSION}.tar.gz && \
+    tar xf v${NINJA_VERSION}.tar.gz && \
+    cd ninja-${NINJA_VERSION} && \
+    ./configure.py --bootstrap && \
+    mkdir -p /tmp/ninja && \
+    cp ./ninja /tmp/ninja/
 
 ###
 ### Prepare appimagetool
@@ -144,8 +163,8 @@ LABEL org.label-schema.vendor="Amyspark"
 LABEL org.label-schema.schema-version="1.0"
 
 # Install cmake
-
 COPY --from=cmake /tmp/cmake /usr/local
+COPY --from=ninja /tmp/ninja /usr/local
 
 # Install patchelf
 COPY --from=patchelf /tmp/patchelf /usr/local
