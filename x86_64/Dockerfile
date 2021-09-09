@@ -123,7 +123,7 @@ COPY --from=linuxdeployqt /tmp/linuxdeployqt/squashfs-root/usr/ /usr/local
 COPY --from=appimagetool  /tmp/appimagetool/squashfs-root/usr/ /usr/local
 
 # Amyspark: add alternatives
-# TODO: GCC 9 requires Binutils 2.26 and Ubuntu doesn't provide it
+# GCC 8+ supports -fcf-protection, which are in turn unsupported by Binutils 2.26
 # TODO: GCC 7 breaks OCIO because of auto_ptr deprecation
 # RUN apt-get install -y gcc-7 g++-7 && \
 #   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 10 && \

@@ -143,12 +143,14 @@ COPY --from=linuxdeployqt /tmp/linuxdeployqt/squashfs-root/usr/ /usr/local
 COPY --from=appimagetool  /tmp/appimagetool/squashfs-root/usr/ /usr/local
 
 # Amyspark: add alternatives
-RUN apt-get install -y gcc-9 g++-9 && \
-    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 10 && \
-    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 20 && \
-    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 30 && \
-    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 10 && \
-    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 20 && \
-    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 30
+# GCC 8+ supports -fcf-protection, which are in turn unsupported by Binutils 2.26
+# TODO: GCC 7 breaks OCIO because of auto_ptr deprecation
+# RUN apt-get install -y gcc-7 g++-7 && \
+#   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 10 && \
+#   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 20 && \
+#   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 30 && \
+#   update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 10 && \
+#   update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 20 && \
+#   update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 30
 
 USER appimage
