@@ -1,4 +1,4 @@
-FROM multiarch/ubuntu-debootstrap:arm64-xenial as base
+FROM multiarch/ubuntu-core:arm64-xenial as base
 
 # Start off as root
 USER root
@@ -22,35 +22,35 @@ RUN add-apt-repository -y ppa:ubuntu-mozilla-security/rust-updates && apt-get up
 
 # Now install the general dependencies we need for builds
 RUN apt-get install -y \
-    # General requirements for building KDE software
-    # AMY: no CMake, see below
-    build-essential git-core locales \
-    # General requirements for building other software
-    automake gcc-6 g++-6 libxml-parser-perl libpq-dev libaio-dev \
-    # Needed for some frameworks
-    bison gettext \
-    # Qt and KDE Build Dependencies
-    gperf libasound2-dev libatkmm-1.6-dev libbz2-dev libcairo-perl libcap-dev libcups2-dev libdbus-1-dev \
-    libdrm-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev libgcrypt11-dev libgl1-mesa-dev \
-    # AMY: on arm64, libegl1-mesa-dev does not bring in libxkbcommon-dev
-    libxkbcommon-dev \
-    libglib-perl libgsl0-dev libgsl0-dev gstreamer1.0-alsa libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-    libgtk2-perl libjpeg-dev libnss3-dev libpci-dev libpng12-dev libpulse-dev libssl-dev \
-    libgstreamer-plugins-good1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base \
-    gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly libtiff5-dev libudev-dev libwebp-dev flex libmysqlclient-dev \
-    # Mesa libraries for everything to use
-    libx11-dev libxkbcommon-x11-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-util0-dev libxcb-res0-dev libxcb1-dev libxcomposite-dev libxcursor-dev \
-    libxdamage-dev libxext-dev libxfixes-dev libxi-dev libxrandr-dev libxrender-dev libxss-dev libxtst-dev mesa-common-dev \
-    # Krita AppImage (Python) extra dependencies
-    libffi-dev \
-    # Kdenlive AppImage extra dependencies
-    liblist-moreutils-perl libtool libpixman-1-dev subversion \
-    # Support OpenGL ES
-    libgles2-mesa-dev
+  # General requirements for building KDE software
+  # AMY: no CMake, see below
+  build-essential git-core locales \
+  # General requirements for building other software
+  automake gcc-6 g++-6 libxml-parser-perl libpq-dev libaio-dev \
+  # Needed for some frameworks
+  bison gettext \
+  # Qt and KDE Build Dependencies
+  gperf libasound2-dev libatkmm-1.6-dev libbz2-dev libcairo-perl libcap-dev libcups2-dev libdbus-1-dev \
+  libdrm-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev libgcrypt11-dev libgl1-mesa-dev \
+  # AMY: on arm64, libegl1-mesa-dev does not bring in libxkbcommon-dev
+  libxkbcommon-dev \
+  libglib-perl libgsl0-dev libgsl0-dev gstreamer1.0-alsa libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+  libgtk2-perl libjpeg-dev libnss3-dev libpci-dev libpng12-dev libpulse-dev libssl-dev \
+  libgstreamer-plugins-good1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base \
+  gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly libtiff5-dev libudev-dev libwebp-dev flex libmysqlclient-dev \
+  # Mesa libraries for everything to use
+  libx11-dev libxkbcommon-x11-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-util0-dev libxcb-res0-dev libxcb1-dev libxcomposite-dev libxcursor-dev \
+  libxdamage-dev libxext-dev libxfixes-dev libxi-dev libxrandr-dev libxrender-dev libxss-dev libxtst-dev mesa-common-dev \
+  # Krita AppImage (Python) extra dependencies
+  libffi-dev \
+  # Kdenlive AppImage extra dependencies
+  liblist-moreutils-perl libtool libpixman-1-dev subversion \
+  # Support OpenGL ES
+  libgles2-mesa-dev
 # Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 16.04
 # The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
 RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
-RUN python3.9 -m pip install cmake meson ninja
+RUN python3.9 -m pip install meson
 
 # Setup a user account for everything else to be done under
 RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appimage
@@ -60,6 +60,38 @@ RUN mkdir /var/run/sshd/
 RUN locale-gen en_US en_US.UTF-8 en_NZ.UTF-8
 
 ###
+### Prepare cmake
+###
+
+FROM base as cmake
+
+ARG CMAKE_VERSION=3.19.4
+
+RUN cd /tmp && \
+  wget -c https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz && \
+  tar xf cmake-${CMAKE_VERSION}.tar.gz && \
+  cd cmake-${CMAKE_VERSION} && \
+  ./bootstrap --prefix=/tmp/cmake --parallel=$(nproc) && \
+  make -j $(nproc) && \
+  make -j $(nproc) install
+
+###
+### Prepare ninja
+###
+
+FROM base as ninja
+
+ARG NINJA_VERSION=1.10.2
+
+RUN cd /tmp && \
+  wget -c https://github.com/ninja-build/ninja/archive/refs/tags/v${NINJA_VERSION}.tar.gz && \
+  tar xf v${NINJA_VERSION}.tar.gz && \
+  cd ninja-${NINJA_VERSION} && \
+  ./configure.py --bootstrap && \
+  mkdir -p /tmp/ninja && \
+  cp ./ninja /tmp/ninja/
+
+###
 ### Prepare appimagetool
 ###
 
@@ -67,12 +99,12 @@ FROM base as appimagetool
 
 # Install appimagetool
 RUN cd /tmp && \
-    wget -c "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-aarch64.AppImage" && \
-    chmod +x appimagetool*AppImage && \
-    mkdir appimagetool && \
-    cd appimagetool && \
-    qemu-aarch64-static /tmp/appimagetool*AppImage --appimage-extract && \
-    chmod +rx squashfs-root/usr/lib/appimagekit
+  wget -c "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-aarch64.AppImage" && \
+  chmod +x appimagetool*AppImage && \
+  mkdir appimagetool && \
+  cd appimagetool && \
+  qemu-aarch64-static /tmp/appimagetool*AppImage --appimage-extract && \
+  chmod +rx squashfs-root/usr/lib/appimagekit
 
 ###
 ### Prepare patchelf
@@ -81,12 +113,12 @@ RUN cd /tmp && \
 FROM base AS patchelf
 
 RUN cd /tmp && \
-    wget -c https://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.bz2 && \ 
-    tar xf patchelf-0.9.tar.bz2 && \
-    cd patchelf-0.9/ && \
-    ./configure --prefix=/tmp/patchelf && \
-    make -j$(nproc) && \
-    make -j$(nproc) install
+  wget -c https://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.bz2 && \ 
+  tar xf patchelf-0.9.tar.bz2 && \
+  cd patchelf-0.9/ && \
+  ./configure --prefix=/tmp/patchelf && \
+  make -j$(nproc) && \
+  make -j$(nproc) install
 
 ###
 ### Prepare linuxdeployqt
@@ -99,22 +131,22 @@ COPY --from=patchelf /tmp/patchelf /
 COPY --from=appimagetool  /tmp/appimagetool/squashfs-root/usr/ /usr/local
 
 RUN apt-get install -y \
-    qt5-default qtbase5-dev qttools5-dev-tools
+  qt5-default qtbase5-dev qttools5-dev-tools
 
 RUN cd /tmp && \
-    git clone https://github.com/probonopd/linuxdeployqt.git src && \
-    cd src && \
-    qmake CONFIG+=release CONFIG+=force_debug_info linuxdeployqt.pro && \
-    make -j$(nproc) && \
-    mkdir -p linuxdeployqt.AppDir/usr/bin && \
-    mkdir -p linuxdeployqt.AppDir/usr/lib && \
-    cp ./bin/linuxdeployqt linuxdeployqt.AppDir/usr/bin/ && \
-    chmod +x linuxdeployqt.AppDir/AppRun && \
-    ./bin/linuxdeployqt linuxdeployqt.AppDir/linuxdeployqt.desktop -verbose=3 -appimage -executable=linuxdeployqt.AppDir/usr/bin/linuxdeployqt && \
-    cd /tmp && \
-    mkdir linuxdeployqt && \
-    cd linuxdeployqt && \
-    qemu-aarch64-static /tmp/src/linuxdeployqt*AppImage --appimage-extract
+  git clone https://github.com/probonopd/linuxdeployqt.git src && \
+  cd src && \
+  qmake CONFIG+=release CONFIG+=force_debug_info linuxdeployqt.pro && \
+  make -j$(nproc) && \
+  mkdir -p linuxdeployqt.AppDir/usr/bin && \
+  mkdir -p linuxdeployqt.AppDir/usr/lib && \
+  cp ./bin/linuxdeployqt linuxdeployqt.AppDir/usr/bin/ && \
+  chmod +x linuxdeployqt.AppDir/AppRun && \
+  ./bin/linuxdeployqt linuxdeployqt.AppDir/linuxdeployqt.desktop -verbose=3 -appimage -executable=linuxdeployqt.AppDir/usr/bin/linuxdeployqt && \
+  cd /tmp && \
+  mkdir linuxdeployqt && \
+  cd linuxdeployqt && \
+  qemu-aarch64-static /tmp/src/linuxdeployqt*AppImage --appimage-extract
 
 ###
 # Merge all tools (into /usr/local, that folder is ignored by Krita scripts)
@@ -122,8 +154,8 @@ RUN cd /tmp && \
 
 FROM base
 
-ARG BUILD_DATE
 ARG BUILD_REF
+ARG BUILD_DATE
 
 LABEL org.label-schema.build-date=${BUILD_DATE}
 LABEL org.label-schema.name="KDE Appimage Base (arm64)"
@@ -132,6 +164,9 @@ LABEL org.label-schema.vcs-ref=${BUILD_REF}
 LABEL org.label-schema.vcs-url="https://github.com/amyspark/appimage-potato"
 LABEL org.label-schema.vendor="Amyspark"
 LABEL org.label-schema.schema-version="1.0"
+
+# Install ninja
+COPY --from=ninja /tmp/ninja /usr/local
 
 # Install patchelf
 COPY --from=patchelf /tmp/patchelf /usr/local
