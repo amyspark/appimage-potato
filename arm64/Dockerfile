@@ -129,7 +129,7 @@ LABEL org.label-schema.build-date=${BUILD_DATE}
 LABEL org.label-schema.name="KDE Appimage Base (arm64)"
 LABEL org.label-schema.url="https://amyspark.me/"
 LABEL org.label-schema.vcs-ref=${BUILD_REF}
-LABEL org.label-schema.vcs-url="e.g. https://github.com/amyspark/appimage-potato"
+LABEL org.label-schema.vcs-url="https://github.com/amyspark/appimage-potato"
 LABEL org.label-schema.vendor="Amyspark"
 LABEL org.label-schema.schema-version="1.0"
 
