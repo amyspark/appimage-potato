@@ -165,6 +165,9 @@ LABEL org.label-schema.vcs-url="https://github.com/amyspark/appimage-potato"
 LABEL org.label-schema.vendor="Amyspark"
 LABEL org.label-schema.schema-version="1.0"
 
+# Install cmake
+COPY --from=cmake /tmp/cmake /usr/local
+
 # Install ninja
 COPY --from=ninja /tmp/ninja /usr/local
 
