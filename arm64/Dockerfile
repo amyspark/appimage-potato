@@ -72,8 +72,8 @@ RUN cd /tmp && \
   tar xf cmake-${CMAKE_VERSION}.tar.gz && \
   cd cmake-${CMAKE_VERSION} && \
   ./bootstrap --prefix=/tmp/cmake --parallel=$(nproc) && \
-  make -j $(nproc) && \
-  make -j $(nproc) install
+  nice -n 20 make -j $(nproc) && \
+  nice -n 20 make -j $(nproc) install
 
 ###
 ### Prepare ninja
@@ -117,8 +117,8 @@ RUN cd /tmp && \
   tar xf patchelf-0.9.tar.bz2 && \
   cd patchelf-0.9/ && \
   ./configure --prefix=/tmp/patchelf && \
-  make -j$(nproc) && \
-  make -j$(nproc) install
+  nice -n 20 make -j$(nproc) && \
+  nice -n 20 make -j$(nproc) install
 
 ###
 ### Prepare linuxdeployqt
@@ -152,6 +152,8 @@ RUN cd /tmp && \
 # Merge all tools (into /usr/local, that folder is ignored by Krita scripts)
 ###
 
+FROM multiarch/qemu-user-static:aarch64 as emergencypatch
+
 FROM base
 
 ARG BUILD_REF
@@ -179,6 +181,10 @@ COPY --from=linuxdeployqt /tmp/linuxdeployqt/squashfs-root/usr/ /usr/local
 
 # Install appimagetool
 COPY --from=appimagetool  /tmp/appimagetool/squashfs-root/usr/ /usr/local
+
+# Emergency patch: override the qemu-user-static binary
+# It is incompatible with xenial and trusty's dynamic loader
+COPY --from=emergencypatch /usr/bin/qemu-aarch64-static /usr/bin
 
 # Amyspark: add alternatives
 # GCC 8+ supports -fcf-protection, which are in turn unsupported by Binutils 2.26
