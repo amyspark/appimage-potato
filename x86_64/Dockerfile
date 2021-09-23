@@ -24,7 +24,7 @@ RUN apt-get install -y \
   # General requirements for building KDE software
   build-essential cmake git-core locales \
   # General requirements for building other software
-  automake gcc-6 g++-6 libxml-parser-perl libpq-dev libaio-dev \
+  automake gcc-6 g++-6 gcc-9 g++-9 libxml-parser-perl libpq-dev libaio-dev \
   # Needed for some frameworks
   bison gettext \
   # Qt and KDE Build Dependencies
@@ -48,12 +48,35 @@ RUN apt-get install -y \
 RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
 RUN python3.9 -m pip install meson
 
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 10 && \
+  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 20 && \
+  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 30 && \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 10 && \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 20 && \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 30
+
 # Setup a user account for everything else to be done under
 RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appimage
 # Make sure SSHD will be able to startup
 RUN mkdir /var/run/sshd/
 # Get locales in order
 RUN locale-gen en_US en_US.UTF-8 en_NZ.UTF-8
+
+###
+### Prepare cmake
+###
+
+FROM base as cmake
+
+ARG CMAKE_VERSION=3.20.5
+
+RUN cd /tmp && \
+  wget -c https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz && \
+  tar xf cmake-${CMAKE_VERSION}.tar.gz && \
+  cd cmake-${CMAKE_VERSION} && \
+  ./bootstrap --prefix=/tmp/cmake --parallel=$(nproc) && \
+  nice -n 20 make -j $(nproc) && \
+  nice -n 20 make -j $(nproc) install
 
 ###
 ### Prepare ninja
@@ -131,6 +154,9 @@ LABEL org.label-schema.vcs-url="https://github.com/amyspark/appimage-potato"
 LABEL org.label-schema.vendor="Amyspark"
 LABEL org.label-schema.schema-version="1.0"
 
+# Install cmake
+COPY --from=cmake /tmp/cmake /usr/local
+
 # Install ninja
 COPY --from=ninja /tmp/ninja /usr/local
 
@@ -142,16 +168,5 @@ COPY --from=linuxdeployqt /tmp/linuxdeployqt/squashfs-root/usr/ /usr/local
 
 # Install appimagetool
 COPY --from=appimagetool  /tmp/appimagetool/squashfs-root/usr/ /usr/local
-
-# Amyspark: add alternatives
-# GCC 8+ supports -fcf-protection, which are in turn unsupported by Binutils 2.26
-# TODO: GCC 7 breaks OCIO because of auto_ptr deprecation
-# RUN apt-get install -y gcc-7 g++-7 && \
-#   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 10 && \
-#   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 20 && \
-#   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 30 && \
-#   update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 10 && \
-#   update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 20 && \
-#   update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 30
 
 USER appimage
