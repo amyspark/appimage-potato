@@ -91,8 +91,8 @@ RUN cd /tmp && \
   tar xf v${NINJA_VERSION}.tar.gz && \
   cd ninja-${NINJA_VERSION} && \
   ./configure.py --bootstrap && \
-  mkdir -p /tmp/ninja && \
-  cp ./ninja /tmp/ninja/
+  mkdir -p /tmp/ninja/bin && \
+  cp ./ninja /tmp/ninja/bin/
 
 ###
 ### Prepare appimagetool
