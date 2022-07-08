@@ -16,8 +16,8 @@ OptionParser.new do |opts|
     vcs = `git rev-parse HEAD`.strip
 
     Dir.chdir __dir__ do |_wd|
-      warn "docker build --build-arg=BUILD_DATE=#{build_date} --build-arg=BUILD_REF=#{vcs} --tag=kde-appimage-base-1604-#{arch}:latest #{arch}"
-      system("docker build --build-arg=BUILD_DATE=#{build_date} --build-arg=BUILD_REF=#{vcs} --tag=kde-appimage-base-1604-#{arch}:latest #{arch}")
+      warn "docker build --build-arg=BUILD_DATE=#{build_date} --build-arg=BUILD_REF=#{vcs} --tag=kde-appimage-base-1804-#{arch}:latest #{arch}"
+      system("docker build --build-arg=BUILD_DATE=#{build_date} --build-arg=BUILD_REF=#{vcs} --tag=kde-appimage-base-1804-#{arch}:latest #{arch}")
     end
   end
 
