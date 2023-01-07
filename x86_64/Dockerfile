@@ -68,38 +68,6 @@ RUN mkdir /var/run/sshd/
 RUN locale-gen en_US en_US.UTF-8 en_NZ.UTF-8
 
 ###
-### Prepare cmake
-###
-
-FROM base as cmake
-
-ARG CMAKE_VERSION=3.20.5
-
-RUN cd /tmp && \
-  wget -c https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz && \
-  tar xf cmake-${CMAKE_VERSION}.tar.gz && \
-  cd cmake-${CMAKE_VERSION} && \
-  ./bootstrap --prefix=/tmp/cmake --parallel=$(nproc) && \
-  nice -n 20 make -j $(nproc) && \
-  nice -n 20 make -j $(nproc) install
-
-###
-### Prepare ninja
-###
-
-FROM base as ninja
-
-ARG NINJA_VERSION=1.10.2
-
-RUN cd /tmp && \
-  wget -c https://github.com/ninja-build/ninja/archive/refs/tags/v${NINJA_VERSION}.tar.gz && \
-  tar xf v${NINJA_VERSION}.tar.gz && \
-  cd ninja-${NINJA_VERSION} && \
-  python3 ./configure.py --bootstrap && \
-  mkdir -p /tmp/ninja/bin && \
-  cp ./ninja /tmp/ninja/bin/
-
-###
 ### Prepare appimagetool
 ###
 
@@ -158,12 +126,6 @@ LABEL org.label-schema.vcs-ref=${BUILD_REF}
 LABEL org.label-schema.vcs-url="https://github.com/amyspark/appimage-potato"
 LABEL org.label-schema.vendor="Amyspark"
 LABEL org.label-schema.schema-version="1.0"
-
-# Install cmake
-COPY --from=cmake /tmp/cmake /usr/local
-
-# Install ninja
-COPY --from=ninja /tmp/ninja /usr/local
 
 # Install patchelf
 COPY --from=patchelf /tmp/patchelf /usr/local
