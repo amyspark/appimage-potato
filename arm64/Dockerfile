@@ -173,6 +173,10 @@ COPY --from=linuxdeployqt /tmp/linuxdeployqt/squashfs-root/usr/ /usr/local
 # Install appimagetool
 COPY --from=appimagetool  /tmp/appimagetool/squashfs-root/usr/ /usr/local
 
+# Workaround: patch appimagetool having a wrong rpath
+RUN sh -c "find /usr/local/lib -name '*.so*' | xargs -I % patchelf --set-rpath '$ORIGIN' %" && \
+  patchelf --set-rpath '$ORIGIN/../lib' /usr/local/bin/appimagetool
+
 # Emergency patch: override the qemu-user-static binary
 # It is incompatible with xenial and trusty's dynamic loader
 COPY --from=emergencypatch /usr/bin/qemu-aarch64-static /usr/bin
