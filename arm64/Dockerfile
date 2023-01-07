@@ -55,7 +55,7 @@ RUN apt-get install -y \
 # Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 18.04
 # The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
 RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
-RUN python3.9 -m pip install meson ninja
+RUN python3.9 -m pip install meson
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 10 && \
   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 20 && \
@@ -68,6 +68,22 @@ RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appim
 RUN mkdir /var/run/sshd/
 # Get locales in order
 RUN locale-gen en_US en_US.UTF-8 en_NZ.UTF-8
+
+###
+### Prepare ninja
+###
+
+FROM base as ninja
+
+ARG NINJA_VERSION=1.10.2
+
+RUN cd /tmp && \
+  wget -c https://github.com/ninja-build/ninja/archive/refs/tags/v${NINJA_VERSION}.tar.gz && \
+  tar xf v${NINJA_VERSION}.tar.gz && \
+  cd ninja-${NINJA_VERSION} && \
+  python3 ./configure.py --bootstrap && \
+  mkdir -p /tmp/ninja/bin && \
+  cp ./ninja /tmp/ninja/bin/
 
 ###
 ### Prepare appimagetool
@@ -144,6 +160,9 @@ LABEL org.label-schema.vcs-ref=${BUILD_REF}
 LABEL org.label-schema.vcs-url="https://github.com/amyspark/appimage-potato"
 LABEL org.label-schema.vendor="Amyspark"
 LABEL org.label-schema.schema-version="1.0"
+
+# Install ninja
+COPY --from=ninja /tmp/ninja /usr/local
 
 # Install patchelf
 COPY --from=patchelf /tmp/patchelf /usr/local
