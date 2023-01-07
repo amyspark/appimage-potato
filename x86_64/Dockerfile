@@ -39,6 +39,8 @@ RUN apt-get install -y \
   libgtk2-perl libjpeg-dev libnss3-dev libpci-dev libpng-dev libpulse-dev libssl-dev \
   libgstreamer-plugins-good1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base \
   gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-pulseaudio libtiff5-dev libudev-dev libwebp-dev flex libmysqlclient-dev libicu-dev \
+  # QX11Extras deps in Qt 5.15.7
+  libxcb-shm0-dev libxinerama-dev libxcb-icccm4-dev libxcb-xinerama0-dev libxcb-image0-dev libxcb-render-util0-dev \
   # Mesa libraries for everything to use
   libx11-dev libxkbcommon-x11-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-util0-dev libxcb-res0-dev libxcb1-dev libxcomposite-dev libxcursor-dev \
   libxdamage-dev libxext-dev libxfixes-dev libxi-dev libxrandr-dev libxrender-dev libxss-dev libxtst-dev mesa-common-dev \
@@ -48,10 +50,10 @@ RUN apt-get install -y \
   liblist-moreutils-perl libtool libpixman-1-dev subversion \
   # Support OpenGL ES
   libgles2-mesa-dev
-# Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 16.04
+# Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 18.04
 # The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
 RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
-RUN python3.9 -m pip install meson
+RUN python3.9 -m pip install meson ninja
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 10 && \
   update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 20 && \
