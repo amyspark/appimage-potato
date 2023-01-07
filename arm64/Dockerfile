@@ -1,32 +1,35 @@
-FROM multiarch/ubuntu-core:arm64-xenial as base
+FROM multiarch/ubuntu-core:arm64-bionic as base
 
 # Start off as root
 USER root
 
 # Setup the various repositories we are going to need for our dependencies
 # Some software demands a newer GCC because they're using C++14 stuff, which is just insane
-# AMY: CMake must be compiled manually, Kitware does not provide ARM packages for < 20.04
 RUN apt-get update && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
-RUN add-apt-repository -y ppa:openjdk-r/ppa
+RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
+RUN add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 
 # Update the system and bring in our core operating requirements
 RUN apt-get update && apt-get upgrade -y && apt-get install -y openssh-server openjdk-8-jre-headless
 
 # Some software demands a newer GCC because they're using C++14 stuff, which is just insane
 # We do this after the general system update to ensure it doesn't bring in any unnecessary updates
-# AMY: Add universe repo at this time, debootstrap does not include it
-RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && add-apt-repository universe && apt-get update
+RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && apt-get update
 
 # Krita's dependencies (libheif's avif plugins) need Rust 
 RUN add-apt-repository -y ppa:ubuntu-mozilla-security/rust-updates && apt-get update && apt-get install -y cargo rustc
 
+# 18.04 attempts to configure tzdata
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Now install the general dependencies we need for builds
 RUN apt-get install -y \
   # General requirements for building KDE software
-  # AMY: no CMake, see below
-  build-essential git-core locales \
+  build-essential gcc-11 g++-11 cmake git-core locales rsync \
   # General requirements for building other software
-  automake gcc-6 g++-6 gcc-9 g++-9 libxml-parser-perl libpq-dev libaio-dev \
+  automake libxml-parser-perl libpq-dev libaio-dev \
   # Needed for some frameworks
   bison gettext \
   # Qt and KDE Build Dependencies
@@ -35,9 +38,11 @@ RUN apt-get install -y \
   # AMY: on arm64, libegl1-mesa-dev does not bring in libxkbcommon-dev
   libxkbcommon-dev \
   libglib-perl libgsl0-dev libgsl0-dev gstreamer1.0-alsa libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-  libgtk2-perl libjpeg-dev libnss3-dev libpci-dev libpng12-dev libpulse-dev libssl-dev \
+  libgtk2-perl libjpeg-dev libnss3-dev libpci-dev libpng-dev libpulse-dev libssl-dev \
   libgstreamer-plugins-good1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base \
-  gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly libtiff5-dev libudev-dev libwebp-dev flex libmysqlclient-dev \
+  gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-pulseaudio libtiff5-dev libudev-dev libwebp-dev flex libmysqlclient-dev libicu-dev \
+  # QX11Extras deps in Qt 5.15.7
+  libxcb-shm0-dev libxinerama-dev libxcb-icccm4-dev libxcb-xinerama0-dev libxcb-image0-dev libxcb-render-util0-dev \
   # Mesa libraries for everything to use
   libx11-dev libxkbcommon-x11-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-util0-dev libxcb-res0-dev libxcb1-dev libxcomposite-dev libxcursor-dev \
   libxdamage-dev libxext-dev libxfixes-dev libxi-dev libxrandr-dev libxrender-dev libxss-dev libxtst-dev mesa-common-dev \
@@ -47,17 +52,15 @@ RUN apt-get install -y \
   liblist-moreutils-perl libtool libpixman-1-dev subversion \
   # Support OpenGL ES
   libgles2-mesa-dev
-# Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 16.04
+# Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 18.04
 # The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
 RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
-RUN python3.9 -m pip install meson
+RUN python3.9 -m pip install meson ninja
 
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 10 && \
-  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 20 && \
-  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 30 && \
-  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 10 && \
-  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 20 && \
-  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 30
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 10 && \
+  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 20 && \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 10 && \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 20
 
 # Setup a user account for everything else to be done under
 RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appimage
@@ -65,38 +68,6 @@ RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appim
 RUN mkdir /var/run/sshd/
 # Get locales in order
 RUN locale-gen en_US en_US.UTF-8 en_NZ.UTF-8
-
-###
-### Prepare cmake
-###
-
-FROM base as cmake
-
-ARG CMAKE_VERSION=3.20.5
-
-RUN cd /tmp && \
-  wget -c https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz && \
-  tar xf cmake-${CMAKE_VERSION}.tar.gz && \
-  cd cmake-${CMAKE_VERSION} && \
-  ./bootstrap --prefix=/tmp/cmake --parallel=$(nproc) && \
-  nice -n 20 make -j $(nproc) && \
-  nice -n 20 make -j $(nproc) install
-
-###
-### Prepare ninja
-###
-
-FROM base as ninja
-
-ARG NINJA_VERSION=1.10.2
-
-RUN cd /tmp && \
-  wget -c https://github.com/ninja-build/ninja/archive/refs/tags/v${NINJA_VERSION}.tar.gz && \
-  tar xf v${NINJA_VERSION}.tar.gz && \
-  cd ninja-${NINJA_VERSION} && \
-  ./configure.py --bootstrap && \
-  mkdir -p /tmp/ninja/bin && \
-  cp ./ninja /tmp/ninja/bin/
 
 ###
 ### Prepare appimagetool
@@ -168,17 +139,11 @@ ARG BUILD_DATE
 
 LABEL org.label-schema.build-date=${BUILD_DATE}
 LABEL org.label-schema.name="KDE Appimage Base (arm64)"
-LABEL org.label-schema.url="https://amyspark.me/"
+LABEL org.label-schema.url="https://invent.kde.org/sysadmin/ci-images"
 LABEL org.label-schema.vcs-ref=${BUILD_REF}
 LABEL org.label-schema.vcs-url="https://github.com/amyspark/appimage-potato"
 LABEL org.label-schema.vendor="Amyspark"
 LABEL org.label-schema.schema-version="1.0"
-
-# Install cmake
-COPY --from=cmake /tmp/cmake /usr/local
-
-# Install ninja
-COPY --from=ninja /tmp/ninja /usr/local
 
 # Install patchelf
 COPY --from=patchelf /tmp/patchelf /usr/local
