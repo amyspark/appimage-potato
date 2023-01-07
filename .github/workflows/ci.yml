@@ -11,8 +11,8 @@ jobs:
     strategy:
       matrix: 
         context: 
-          # - { platform: linux/arm64, architecture: arm64 }
-          # - { platform: linux/armhf, architecture: armhf }
+          - { platform: linux/arm64, architecture: arm64 }
+          - { platform: linux/arm/v7, architecture: armhf }
           - { platform: linux/amd64, architecture: x86_64 }
     steps:
       - name: Checkout
