@@ -9,6 +9,10 @@ RUN apt-get update && apt-get install -y apt-transport-https ca-certificates gnu
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
 RUN add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 
+# Set mirrors up
+RUN sed -E -i 's#http://archive\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list && \
+  sed -E -i 's#http://security\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list
+
 # Update the system and bring in our core operating requirements
 RUN apt-get update && apt-get upgrade -y && apt-get install -y openssh-server openjdk-8-jre-headless
 
