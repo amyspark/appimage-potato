@@ -1,4 +1,4 @@
-FROM multiarch/ubuntu-core:arm64-bionic as base
+FROM ghcr.io/amyspark/ubuntu-server:arm64-18.04 as base
 
 # Start off as root
 USER root

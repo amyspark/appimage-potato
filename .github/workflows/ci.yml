@@ -14,9 +14,9 @@ jobs:
     strategy:
       matrix: 
         context: 
-          - { platform: linux/arm64, architecture: arm64 }
-          - { platform: linux/arm/v7, architecture: armhf }
-          - { platform: linux/amd64, architecture: x86_64 }
+          - architecture: arm64
+          - architecture: armhf
+          - architecture: x86_64
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -46,10 +46,11 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: ${{ matrix.context.architecture }}
-          platforms: ${{ matrix.context.platform }}
+          platforms: linux/${{ matrix.context.architecture }}
           push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
           build-args: |
             BUILD_REF=${{ github.ref }}
             BUILD_DATE=${{ steps.date.outputs.date }}
+            ARCH=${{ matrix.context.architecture }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
