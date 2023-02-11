@@ -1,4 +1,4 @@
-FROM multiarch/ubuntu-core:armhf-bionic as base
+FROM ghcr.io/amyspark/ubuntu-server:armhf-18.04 as base
 
 # Start off as root
 USER root
