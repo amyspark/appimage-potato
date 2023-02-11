@@ -15,7 +15,9 @@ jobs:
       matrix: 
         context: 
           - architecture: arm64
+            qemu: 'qemu-aarch64-static'
           - architecture: armhf
+            qemu: 'qemu-arm-static'
           - architecture: x86_64
     steps:
       - name: Checkout
@@ -45,12 +47,13 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
-          context: ${{ matrix.context.architecture }}
+          context: .
           platforms: linux/${{ matrix.context.architecture }}
           push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
           build-args: |
             BUILD_REF=${{ github.ref }}
             BUILD_DATE=${{ steps.date.outputs.date }}
             ARCH=${{ matrix.context.architecture }}
+            QEMU_EXECUTABLE=${{ matrix.context.qemu }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
