@@ -95,32 +95,19 @@ RUN cd /tmp && \
 ### Prepare appimagetool
 ###
 
-ARG ARCH
-
-FROM ghcr.io/amyspark/ubuntu-server:${ARCH}-20.04 as appimagetool
+FROM base as appimagetool
 
 ARG QEMU_EXECUTABLE
 
-# Setup the various repositories we are going to need for our dependencies
-# Some software demands a newer GCC because they're using C++14 stuff, which is just insane
-RUN apt-get update && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
-RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
-RUN apt-add-repository "deb https://apt.kitware.com/ubuntu/ focal main"
-
-# Update the system and bring in our core operating requirements
-RUN apt-get update && apt-get upgrade -y
-
-# libsquashfs-dev is available from 20.04 onwards
-# libgpgme-dev with fixed pkg-config in 20.04 too
-# it also needs cmake >= 3.20
 RUN apt-get install -y build-essential automake cmake desktop-file-utils \
-  libcairo2-dev libsquashfs-dev \
+  libcairo2-dev \
   libarchive-dev liblzma-dev \
   libglib2.0-dev libssl-dev libfuse-dev libtool \
   libgpgme-dev libgcrypt20-dev \
   pkg-config vim zsync
 
-RUN git clone --recursive https://github.com/AppImage/AppImageKit.git /tmp/src
+# Cloning my repository to fix https://github.com/AppImage/AppImageKit/pull/1203#issuecomment-1199568648
+RUN git clone --recursive https://github.com/amyspark/AppImageKit.git /tmp/src
 
 RUN cd /tmp/src && \
     cmake . -DCMAKE_INSTALL_PREFIX=/tmp/appimagetool.AppDir/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON && \
