@@ -40,7 +40,7 @@ RUN apt-get install -y \
   bison gettext \
   # Qt and KDE Build Dependencies
   gperf libasound2-dev libatkmm-1.6-dev libbz2-dev libcairo-perl libcap-dev libcups2-dev libdbus-1-dev \
-  libdrm-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev libgcrypt11-dev libgl1-mesa-dev \
+  libdrm-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev libgcrypt20-dev libgl1-mesa-dev \
   # AMY: on arm64, libegl1-mesa-dev does not bring in libxkbcommon-dev
   libxkbcommon-dev \
   libglib-perl libgsl0-dev libgsl0-dev gstreamer1.0-alsa libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
