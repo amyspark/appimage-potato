@@ -63,10 +63,14 @@ RUN apt-get install -y \
 RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
 RUN python3.9 -m pip install meson
 
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 10 && \
-  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 20 && \
-  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 10 && \
-  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 20
+RUN first_gcc_version=$(ls -1 /usr/bin/gcc-* | grep 'gcc-[0-9]' | sort -t '-' -k 2 -n | head -n 1 | tr -d '\n') && \
+  last_gcc_version=$(ls -1 /usr/bin/gcc-* | grep 'gcc-[0-9]' | sort -t '-' -k 2 -n | tail -n 1 | tr -d '\n') && \
+  update-alternatives --install /usr/bin/gcc gcc $last_gcc_version 10 && \
+  update-alternatives --install /usr/bin/gcc gcc $first_gcc_version 20 && \
+  first_gcc_version=$(ls -1 /usr/bin/g++-* | grep 'g++-[0-9]' | sort -t '-' -k 2 -n | head -n 1 | tr -d '\n') && \
+  last_gcc_version=$(ls -1 /usr/bin/g++-* | grep 'g++-[0-9]' | sort -t '-' -k 2 -n | tail -n 1 | tr -d '\n') && \
+  update-alternatives --install /usr/bin/g++ g++ $last_gcc_version 10 && \
+  update-alternatives --install /usr/bin/g++ g++ $first_gcc_version 20
 
 # Setup a user account for everything else to be done under
 RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appimage
