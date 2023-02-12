@@ -44,7 +44,7 @@ RUN apt-get install -y \
   # AMY: on arm64, libegl1-mesa-dev does not bring in libxkbcommon-dev
   libxkbcommon-dev \
   libglib-perl libgsl0-dev libgsl0-dev gstreamer1.0-alsa libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-  libgtk2-perl libjpeg-dev libnss3-dev libpci-dev libpng-dev libpulse-dev libssl-dev \
+  libjpeg-dev libnss3-dev libpci-dev libpng-dev libpulse-dev libssl-dev \
   libgstreamer-plugins-good1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base \
   gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-pulseaudio libtiff5-dev libudev-dev libwebp-dev flex libmysqlclient-dev libicu-dev \
   # QX11Extras deps in Qt 5.15.7
