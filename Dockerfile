@@ -1,6 +1,9 @@
 ARG ARCH
+ARG VERSION=18.04
 
-FROM ghcr.io/amyspark/ubuntu-server:${ARCH}-18.04 as base
+FROM ghcr.io/amyspark/ubuntu-server:${ARCH}-${VERSION} as base
+
+ARG UBUNTU_RELEASE=bionic
 
 # Start off as root
 USER root
@@ -9,7 +12,7 @@ USER root
 # Some software demands a newer GCC because they're using C++14 stuff, which is just insane
 RUN apt-get update && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
-RUN add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository "deb https://apt.kitware.com/ubuntu/ bionic main"
+RUN add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $UBUNTU_RELEASE main"
 
 # Set mirrors up
 RUN sed -E -i 's#http://archive\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list && \
