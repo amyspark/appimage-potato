@@ -1,8 +1,9 @@
 ARG ARCH
-ARG VERSION=18.04
+ARG VERSION
 
 FROM ghcr.io/amyspark/ubuntu-server:${ARCH}-${VERSION} as base
 
+ARG VERSION=18.04
 ARG UBUNTU_RELEASE=bionic
 
 # Start off as root
@@ -63,8 +64,17 @@ RUN apt-get install -y \
   libgles2-mesa-dev
 # Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 18.04
 # The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
-RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
-RUN python3.9 -m pip install meson
+# AMY: deadsnakes PPA is not available for kinetic
+RUN if [[ ! "$VERSION" > "22.04" ]]; then \
+    add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip ; \
+  else \
+    apt-get install -y python3 python3-dev python3-pip ; \
+  fi
+RUN if [[ ! "$VERSION" > "22.04" ]]; then \
+    python3.9 -m pip install meson ; \
+  else \
+    apt-get install -y meson ; \
+  fi
 
 RUN first_gcc_version=$(ls -1 /usr/bin/gcc-* | grep 'gcc-[0-9]' | sort -t '-' -k 2 -n | head -n 1 | tr -d '\n') && \
   last_gcc_version=$(ls -1 /usr/bin/gcc-* | grep 'gcc-[0-9]' | sort -t '-' -k 2 -n | tail -n 1 | tr -d '\n') && \
@@ -104,6 +114,7 @@ RUN cd /tmp && \
 
 FROM base as appimagetool
 
+ARG VERSION
 ARG QEMU_EXECUTABLE
 
 RUN apt-get install -y build-essential automake cmake desktop-file-utils \
@@ -113,11 +124,21 @@ RUN apt-get install -y build-essential automake cmake desktop-file-utils \
   libgpgme-dev libgcrypt20-dev \
   pkg-config vim zsync
 
+# Work around https://bugs.gentoo.org/706456
+RUN if [[ "$VERSION" > "22.04" ]]; then \
+  apt-get install -y squashfuse libsquashfuse-dev \
+    xz-utils liblzma-dev libarchive-dev && \
+    export APPIMAGE_OPTIONS="-DUSE_SYSTEM_LIBARCHIVE=ON -DUSE_SYSTEM_SQUASHFUSE=ON -DUSE_SYSTEM_XZ=ON -DUSE_SYSTEM_MKSQUASHFS=ON" ; fi
+
 # Cloning my repository to fix https://github.com/AppImage/AppImageKit/pull/1203#issuecomment-1199568648
 RUN git clone --recursive https://github.com/amyspark/AppImageKit.git /tmp/src
 
+# Don't enable Ninja, it relies on hardcoded Makefiles to find the static
+# dependencies -- see
+# https://github.com/AppImageCommunity/libappimage/blob/9c1fae809dedbb3015e9cd5b46e2b5aab06df36e/cmake/dependencies.cmake#L104-L110
+# https://github.com/AppImageCommunity/libappimage/blob/3467b203500fa534789a5c0d08103d2c02b5b4a4/cmake/scripts.cmake#L200-L235
 RUN cd /tmp/src && \
-    cmake . -DCMAKE_INSTALL_PREFIX=/tmp/appimagetool.AppDir/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON && \
+    cmake . -DCMAKE_INSTALL_PREFIX=/tmp/appimagetool.AppDir/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=OFF $APPIMAGE_OPTIONS && \
     nice -n 20 cmake --build . --target install --parallel
 
 RUN cd /tmp/ &&\
