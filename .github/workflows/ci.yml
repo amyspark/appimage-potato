@@ -25,6 +25,10 @@ jobs:
           - architecture: x86_64
             version: '18.04'
             release: bionic
+          - architecture: riscv64
+            qemu: qemu-riscv64-static
+            version: '22.10'
+            release: kinetic
     steps:
       - name: Checkout
         uses: actions/checkout@v3

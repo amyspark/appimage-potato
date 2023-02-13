@@ -9,25 +9,30 @@ ARG UBUNTU_RELEASE=bionic
 # Start off as root
 USER root
 
+# riscv64 Ubuntu either provides many of the components or skips others
+# See the if $ARCH clauses for more info
+
 # Setup the various repositories we are going to need for our dependencies
 # Some software demands a newer GCC because they're using C++14 stuff, which is just insane
 RUN apt-get update && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
-RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
-RUN add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $UBUNTU_RELEASE main"
+RUN if [ "$ARCH" != "riscv64" ]; then wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add - ; fi
+RUN if [ "$ARCH" != "riscv64" ]; then add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $UBUNTU_RELEASE main"; fi
 
 # Set mirrors up
 RUN sed -E -i 's#http://archive\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list && \
   sed -E -i 's#http://security\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list
 
 # Update the system and bring in our core operating requirements
-RUN apt-get update && apt-get upgrade -y && apt-get install -y openssh-server openjdk-8-jre-headless
+RUN apt-get update && apt-get upgrade -y && apt-get install -y openssh-server
+RUN if [ "$ARCH" != "riscv64" ]; then apt-get install -y openjdk-8-jre-headless; fi
 
 # Some software demands a newer GCC because they're using C++14 stuff, which is just insane
 # We do this after the general system update to ensure it doesn't bring in any unnecessary updates
-RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && apt-get update
+RUN if [ "$ARCH" != "riscv64" ]; then add-apt-repository -y ppa:ubuntu-toolchain-r/test && apt-get update; fi
 
 # Krita's dependencies (libheif's avif plugins) need Rust 
-RUN add-apt-repository -y ppa:ubuntu-mozilla-security/rust-updates && apt-get update && apt-get install -y cargo rustc
+RUN if [ "$ARCH" != "riscv64" ]; then add-apt-repository -y ppa:ubuntu-mozilla-security/rust-updates && apt-get update; fi
+RUN apt-get install -y cargo rustc
 
 # 18.04 attempts to configure tzdata
 ENV DEBIAN_FRONTEND=noninteractive
