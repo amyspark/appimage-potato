@@ -5,6 +5,7 @@ FROM ghcr.io/amyspark/ubuntu-server:${ARCH}-${VERSION} as base
 
 ARG VERSION=18.04
 ARG UBUNTU_RELEASE=bionic
+ARG MIRROR
 
 # Start off as root
 USER root
@@ -19,8 +20,8 @@ RUN bash -c "if [[ ! \"$VERSION\" > \"22.04\" ]]; then wget -O - https://apt.kit
 RUN bash -c "if [[ ! \"$VERSION\" > \"22.04\" ]]; then add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository \"deb https://apt.kitware.com/ubuntu/ $UBUNTU_RELEASE main\"; fi"
 
 # Set mirrors up
-RUN sed -E -i 's#http://archive\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list && \
-  sed -E -i 's#http://security\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list
+RUN bash -c "if [[ ! -z \"$MIRROR\" ]]; then sed -E -i 's#http://archive\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list && \
+  sed -E -i 's#http://security\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list ; fi"
 
 # Update the system and bring in our core operating requirements
 RUN apt-get update && apt-get upgrade -y && apt-get install -y openssh-server
