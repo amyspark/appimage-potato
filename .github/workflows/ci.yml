@@ -14,17 +14,12 @@ jobs:
     strategy:
       matrix: 
         context: 
-          - architecture: arm64
-            qemu: qemu-aarch64-static
-            version: '18.04'
-            release: bionic
-          - architecture: armhf
-            qemu: qemu-arm-static
-            version: '18.04'
-            release: bionic
           - architecture: x86_64
             version: '18.04'
             release: bionic
+          - architecture: x86_64
+            version: '22.10'
+            release: kinetic
     steps:
       - name: Checkout
         uses: actions/checkout@v3
