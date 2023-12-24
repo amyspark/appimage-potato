@@ -8,10 +8,13 @@ ARG UBUNTU_RELEASE=focal
 # Start off as root
 USER root
 
+# If you're going to build an EOL release, uncomment this line
+# RUN sed -E -i 's#http://ports\.ubuntu\.com/ubuntu-ports#http://old-releases\.ubuntu\.com/ubuntu#g' /etc/apt/sources.list
+
 # Setup the various repositories we are going to need for our dependencies
 RUN apt-get update && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
-RUN add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $UBUNTU_RELEASE main"
+RUN if [ "$ARCH" != 'riscv64' ]; then add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $UBUNTU_RELEASE main"; fi
 
 # Set mirrors up
 RUN sed -E -i 's#http://archive\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list && \
@@ -65,8 +68,10 @@ RUN apt-get install -y \
   libffi-dev \
   # Other
   flex ninja-build python3-pip \
-  # Support OpenGL ES
+  # AMY: support OpenGL ES
   libgles2-mesa-dev \
+  # AMY: build-essential post kinetic is gcc-10+
+  gcc-9 g++-9 \
   # cppcheck is necessary for the CI
   cppcheck
 
@@ -165,11 +170,22 @@ RUN apt-get install -y \
 
 RUN git clone --recursive https://github.com/AppImage/AppImageKit.git /tmp/src
 
-# https://bugs.gentoo.org/706456 AppImageTool can NOT be compiled with GCC > 10
-# until the squashfs-tools pulls at least 4.4-git.1
-# See https://github.com/plougher/squashfs-tools/commit/fe2f5da4b0f8994169c53e84b7cb8a0feefc97b5
+# Issues with AppImageKit
+# =======================
+# - Its bundled xz-tools cannot detect riscv64 without an autoconf renewal
+#   - FIXME: inject autoreconf -fi into a PATCH_COMMAND inside the corresponding
+#   ExternalProject_Add of lib/libappimage/cmake/dependencies.cmake
+#   - Fix: they need to update to any 5.4 release
+# - Inserts a `-l` flag when using system liblzma, even though
+#   the path coming out of the pkg-config is already a full path
+#   -https://github.com/AppImage/AppImageKit/blob/701b711f42250584b65a88f6427006b1d160164d/cmake/dependencies.cmake
+# - AppImageTool can NOT be compiled with GCC > 10 until they update the
+#   squashfs-tools pull to at least 4.4-git.1.
+#   - https://bugs.gentoo.org/706456
+#   - https://github.com/plougher/squashfs-tools/commit/fe2f5da4b0f8994169c53e84b7cb8a0feefc97b5
 RUN cd /tmp/src && \
-    env CC=gcc-9 CXX=g++-9 cmake . -DCMAKE_INSTALL_PREFIX=/tmp/appimagetool.AppDir/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON && \
+    if [ "$ARCH" = "riscv64" ]; then sed -E -i 's#-l\$\{xz_LIBRARIES\}#${xz_LIBRARIES}#g' ./cmake/dependencies.cmake; fi && \
+    env CC=gcc-9 CXX=g++-9 cmake . -DCMAKE_INSTALL_PREFIX=/tmp/appimagetool.AppDir/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON -DUSE_SYSTEM_XZ=$([ "$ARCH" = "riscv64" ] && echo "TRUE" || echo "FALSE") && \
     nice -n 20 cmake --build . --target install --parallel
 
 RUN cd /tmp/ &&\
