@@ -16,15 +16,15 @@ jobs:
         context: 
           - architecture: arm64
             qemu: qemu-aarch64-static
-            version: '18.04'
-            release: bionic
+            version: '20.04'
+            release: focal
           - architecture: armhf
             qemu: qemu-arm-static
-            version: '18.04'
-            release: bionic
+            version: '20.04'
+            release: focal
           - architecture: x86_64
-            version: '18.04'
-            release: bionic
+            version: '20.04'
+            release: focal
     steps:
       - name: Checkout
         uses: actions/checkout@v3
