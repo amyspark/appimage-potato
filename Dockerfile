@@ -1,4 +1,4 @@
-ARG ARCH
+ARG ARCH=x86_64
 ARG VERSION=20.04
 
 FROM ghcr.io/amyspark/ubuntu-server:${ARCH}-${VERSION} as base
@@ -131,17 +131,45 @@ FROM base as appimagetool
 
 ARG QEMU_EXECUTABLE
 
-RUN apt-get install -y build-essential automake cmake desktop-file-utils \
-  libcairo2-dev libsquashfs-dev \
-  libarchive-dev liblzma-dev \
-  libglib2.0-dev libssl-dev libfuse-dev libtool \
-  libgpgme-dev libgcrypt20-dev \
-  pkg-config vim zsync
+# https://github.com/AppImageCommunity/AppImageBuild/blob/5100790d827cb746079f2c2f4481baf509c51818/install-deps-ubuntu.sh#L8-L36
+RUN apt-get install -y \
+    libfuse-dev \
+    desktop-file-utils \
+    ca-certificates \
+    gcc \
+    g++ \
+    make \
+    build-essential \
+    git \
+    automake \
+    autoconf \
+    libtool \
+    libtool-bin \
+    patch \
+    wget \
+    vim-common \
+    desktop-file-utils \
+    pkg-config \
+    libarchive-dev \
+    librsvg2-dev \
+    librsvg2-bin \
+    liblzma-dev \
+    cmake \
+    libssl-dev \
+    zsync \
+    fuse \
+    gettext \
+    bison \
+    libgpgme-dev \
+    texinfo
 
 RUN git clone --recursive https://github.com/AppImage/AppImageKit.git /tmp/src
 
+# https://bugs.gentoo.org/706456 AppImageTool can NOT be compiled with GCC > 10
+# until the squashfs-tools pulls at least 4.4-git.1
+# See https://github.com/plougher/squashfs-tools/commit/fe2f5da4b0f8994169c53e84b7cb8a0feefc97b5
 RUN cd /tmp/src && \
-    cmake . -DCMAKE_INSTALL_PREFIX=/tmp/appimagetool.AppDir/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON && \
+    env CC=gcc-9 CXX=g++-9 cmake . -DCMAKE_INSTALL_PREFIX=/tmp/appimagetool.AppDir/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON && \
     nice -n 20 cmake --build . --target install --parallel
 
 RUN cd /tmp/ &&\
