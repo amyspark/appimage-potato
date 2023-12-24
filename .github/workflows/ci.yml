@@ -32,12 +32,17 @@ jobs:
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+      - name: Calculate name
+        id: image_version
+        run: echo "value=${IMAGE_VERSION//./}" >> $GITHUB_OUTPUT
+        env:
+          IMAGE_VERSION: ${{ matrix.context.version }}
       - name: Set up Docker metadata
         id: meta
         uses: docker/metadata-action@v4
         with:
           images: |
-            ghcr.io/amyspark/appimage1804
+            ghcr.io/amyspark/appimage${{ steps.image_version.outputs.value }}
           tags: |
             type=raw,value=${{ matrix.context.architecture }}-latest
       - name: Login to GitHub Container Registry
