@@ -1,15 +1,14 @@
 ARG ARCH
-ARG VERSION=18.04
+ARG VERSION=20.04
 
 FROM ghcr.io/amyspark/ubuntu-server:${ARCH}-${VERSION} as base
 
-ARG UBUNTU_RELEASE=bionic
+ARG UBUNTU_RELEASE=focal
 
 # Start off as root
 USER root
 
 # Setup the various repositories we are going to need for our dependencies
-# Some software demands a newer GCC because they're using C++14 stuff, which is just insane
 RUN apt-get update && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
 RUN add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $UBUNTU_RELEASE main"
@@ -18,8 +17,8 @@ RUN add-apt-repository -y ppa:openjdk-r/ppa && apt-add-repository "deb https://a
 RUN sed -E -i 's#http://archive\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list && \
   sed -E -i 's#http://security\.ubuntu\.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g' /etc/apt/sources.list
 
-# Update the system and bring in our core operating requirements
-RUN apt-get update && apt-get upgrade -y && apt-get install -y openssh-server openjdk-8-jre-headless
+# Update the system...
+RUN apt-get update && apt-get upgrade -y
 
 # Some software demands a newer GCC because they're using C++14 stuff, which is just insane
 # We do this after the general system update to ensure it doesn't bring in any unnecessary updates
@@ -28,8 +27,6 @@ RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && apt-get update
 # Krita's dependencies (libheif's avif plugins) need Rust 
 RUN add-apt-repository -y ppa:ubuntu-mozilla-security/rust-updates && apt-get update && apt-get install -y cargo rustc
 
-# 18.04 attempts to configure tzdata
-ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
@@ -41,39 +38,67 @@ RUN apt-get install -y \
   automake libxml-parser-perl libpq-dev libaio-dev \
   # Needed for some frameworks
   bison gettext \
-  # Qt and KDE Build Dependencies
-  gperf libasound2-dev libatkmm-1.6-dev libbz2-dev libcairo-perl libcap-dev libcups2-dev libdbus-1-dev \
-  libdrm-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev libgcrypt20-dev libgl1-mesa-dev \
+  # Base system deps
+  gperf libnss3-dev libpci-dev libatkmm-1.6-dev libbz2-dev libcap-dev libdbus-1-dev libudev-dev \
+  # OpenSSL (1.1.1f) and libgcrypt (1.8.5) libraries 
+  libssl-dev libgcrypt-dev \
+  # DRM and openGL libraries
+  libdrm-dev libegl1-mesa-dev libgl1-mesa-dev mesa-common-dev \
   # AMY: on arm64, libegl1-mesa-dev does not bring in libxkbcommon-dev
   libxkbcommon-dev \
-  libglib-perl libgsl0-dev libgsl0-dev gstreamer1.0-alsa libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-  libjpeg-dev libnss3-dev libpci-dev libpng-dev libpulse-dev libssl-dev \
-  libgstreamer-plugins-good1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base \
-  gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-pulseaudio libtiff5-dev libudev-dev libwebp-dev flex libmysqlclient-dev libicu-dev \
-  # QX11Extras deps in Qt 5.15.7
-  libxcb-shm0-dev libxinerama-dev libxcb-icccm4-dev libxcb-xinerama0-dev libxcb-image0-dev libxcb-render-util0-dev \
-  # Mesa libraries for everything to use
-  libx11-dev libxkbcommon-x11-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-util0-dev libxcb-res0-dev libxcb1-dev libxcomposite-dev libxcursor-dev \
-  libxdamage-dev libxext-dev libxfixes-dev libxi-dev libxrandr-dev libxrender-dev libxss-dev libxtst-dev mesa-common-dev \
-  # Krita AppImage (Python) extra dependencies
+  # Font libraries (TODO: consider removal)
+  libfontconfig1-dev libfreetype6-dev \
+  # GNU Scientific Library
+  libgsl-dev \
+  # GStreamer pugins for Qt Multimedia
+  libpulse-dev libasound2-dev \
+  gstreamer1.0-alsa gstreamer1.0-pulseaudio gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly \
+  libgstreamer1.0-dev libgstreamer-plugins-good1.0-dev libgstreamer-plugins-bad1.0-dev libgstreamer-plugins-base1.0-dev \
+  # XCB Libraries for Qt
+  libwayland-dev \
+  libicu-dev libxcb-shm0-dev libxinerama-dev libxcb-icccm4-dev libxcb-xinerama0-dev libxcb-image0-dev libxcb-render-util0-dev \
+  libx11-dev libxkbcommon-x11-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-util0-dev libxcb-res0-dev libxcb1-dev \
+  libxcomposite-dev libxcursor-dev libxdamage-dev libxext-dev libxfixes-dev libxi-dev libxrandr-dev libxrender-dev \
+  libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxcb-sync-dev libxcb-xinput-dev \
+  libxss-dev libxtst-dev \
+  # Krita AppImage Python extra dependencies
   libffi-dev \
-  # Kdenlive AppImage extra dependencies
-  liblist-moreutils-perl libtool libpixman-1-dev subversion \
+  # Other
+  flex ninja-build python3-pip \
   # Support OpenGL ES
-  libgles2-mesa-dev
-# Krita's dependencies (libheif's avif plugins) need meson and ninja, both aren't available in binary form for 18.04
-# The deadsnakes PPA packs setuptools and pip inside python3.9-venv, let's deploy it manually
-RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv && python3.9 -m ensurepip 
-RUN python3.9 -m pip install meson
+  libgles2-mesa-dev \
+  # cppcheck is necessary for the CI
+  cppcheck
 
-RUN first_gcc_version=$(ls -1 /usr/bin/gcc-* | grep 'gcc-[0-9]' | sort -t '-' -k 2 -n | head -n 1 | tr -d '\n') && \
-  last_gcc_version=$(ls -1 /usr/bin/gcc-* | grep 'gcc-[0-9]' | sort -t '-' -k 2 -n | tail -n 1 | tr -d '\n') && \
-  update-alternatives --install /usr/bin/gcc gcc $last_gcc_version 10 && \
-  update-alternatives --install /usr/bin/gcc gcc $first_gcc_version 20 && \
-  first_gcc_version=$(ls -1 /usr/bin/g++-* | grep 'g++-[0-9]' | sort -t '-' -k 2 -n | head -n 1 | tr -d '\n') && \
-  last_gcc_version=$(ls -1 /usr/bin/g++-* | grep 'g++-[0-9]' | sort -t '-' -k 2 -n | tail -n 1 | tr -d '\n') && \
-  update-alternatives --install /usr/bin/g++ g++ $last_gcc_version 10 && \
-  update-alternatives --install /usr/bin/g++ g++ $first_gcc_version 20
+# Since recently we build Python ourselves, so there is no need for the deadsnake's repo
+# (at least until we recover system-provided python)
+## The deadsnakes PPA packs setuptools and pip inside python3.10-venv
+# RUN add-apt-repository -y ppa:deadsnakes/ppa && apt-get update && apt-get install -y python3.10 python3.10-dev python3.10-venv && python3.10 -m ensurepip 
+
+# Krita's dependencies (libheif's avif plugins) need meson and ninja
+# Meson is available in binary form for 20.04
+# AMY: Ninja on 20.04 LTS is 1.10 which is good enough
+RUN apt-get install -y python3-pip && python3 -m pip install meson
+
+RUN apt-get install --yes ccache python3-yaml python3-packaging python3-lxml python3-clint openbox xvfb dbus-x11
+# See bug for gcovr: https://github.com/gcovr/gcovr/issues/583
+RUN python3 -m pip install python-gitlab gcovr==5.0 cppcheck-codequality
+
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 20 && \
+     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 10 && \
+     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 20 && \
+     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 10 && \
+     update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-11 20 && \
+     update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 10 && \
+     update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-11 20 && \
+     update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-9 10 && \
+     update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-11 20 && \
+     update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-9 10
+
+# For D-Bus to be willing to start it needs a Machine ID
+RUN dbus-uuidgen > /etc/machine-id
+# Certain X11 based software is very particular about permissions and ownership around /tmp/.X11-unix/ so ensure this is right
+RUN mkdir /tmp/.X11-unix/ && chown root:root /tmp/.X11-unix/ && chmod 1777 /tmp/.X11-unix/
 
 # Setup a user account for everything else to be done under
 RUN useradd -d /home/appimage/ -u 1000 --user-group --create-home -G video appimage
@@ -86,17 +111,17 @@ RUN locale-gen en_US en_US.UTF-8 en_NZ.UTF-8
 ### Prepare ninja
 ###
 
-FROM base as ninja
+# FROM base as ninja
 
-ARG NINJA_VERSION=1.10.2
+# ARG NINJA_VERSION=1.11.1
 
-RUN cd /tmp && \
-  wget -c https://github.com/ninja-build/ninja/archive/refs/tags/v${NINJA_VERSION}.tar.gz && \
-  tar xf v${NINJA_VERSION}.tar.gz && \
-  cd ninja-${NINJA_VERSION} && \
-  python3 ./configure.py --bootstrap && \
-  mkdir -p /tmp/ninja/bin && \
-  cp ./ninja /tmp/ninja/bin/
+# RUN cd /tmp && \
+#   wget -c https://github.com/ninja-build/ninja/archive/refs/tags/v${NINJA_VERSION}.tar.gz && \
+#   tar xf v${NINJA_VERSION}.tar.gz && \
+#   cd ninja-${NINJA_VERSION} && \
+#   python3 ./configure.py --bootstrap && \
+#   mkdir -p /tmp/ninja/bin && \
+#   cp ./ninja /tmp/ninja/bin/
 
 ###
 ### Prepare appimagetool
@@ -107,14 +132,13 @@ FROM base as appimagetool
 ARG QEMU_EXECUTABLE
 
 RUN apt-get install -y build-essential automake cmake desktop-file-utils \
-  libcairo2-dev \
+  libcairo2-dev libsquashfs-dev \
   libarchive-dev liblzma-dev \
   libglib2.0-dev libssl-dev libfuse-dev libtool \
   libgpgme-dev libgcrypt20-dev \
   pkg-config vim zsync
 
-# Cloning my repository to fix https://github.com/AppImage/AppImageKit/pull/1203#issuecomment-1199568648
-RUN git clone --recursive https://github.com/amyspark/AppImageKit.git /tmp/src
+RUN git clone --recursive https://github.com/AppImage/AppImageKit.git /tmp/src
 
 RUN cd /tmp/src && \
     cmake . -DCMAKE_INSTALL_PREFIX=/tmp/appimagetool.AppDir/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON && \
@@ -199,7 +223,7 @@ LABEL org.label-schema.vendor="Amyspark"
 LABEL org.label-schema.schema-version="1.0"
 
 # Install ninja
-COPY --from=ninja /tmp/ninja /usr/local
+# COPY --from=ninja /tmp/ninja /usr/local
 
 # Install patchelf
 COPY --from=patchelf /tmp/patchelf /usr/local
