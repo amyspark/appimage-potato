@@ -59,7 +59,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/${{ matrix.context.architecture }}
+          platforms: linux/amd64,linux/${{ matrix.context.architecture }}
           push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
           build-args: |
             BUILD_REF=${{ github.ref }}
